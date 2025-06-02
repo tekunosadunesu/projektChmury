@@ -7,6 +7,10 @@ import streamlit as st
 import leafmap.foliumap as leafmap
 import sqlalchemy
 from get_conn import get_connection_uri
+from azure.storage.blob import BlobServiceClient
+from azure.identity import DefaultAzureCredential
+import io
+import os
 
 # https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/connect-python?tabs=cmd%2Cpasswordless
 # granice wroclawia z bazy
@@ -14,7 +18,7 @@ from get_conn import get_connection_uri
 # gdf = gpd.read_postgis("select * from gran_dzielnice", con=engine, geom_col="geom")
 # gdf = gdf.to_crs("EPSG:32633")
 
-engine = sqlalchemy.create_engine(get_connection_uri())
+# engine = sqlalchemy.create_engine(get_connection_uri())
 
 # https://planetarycomputer.microsoft.com/docs/quickstarts/reading-stac/
 # pobieranie danych z planetary computer
@@ -61,6 +65,45 @@ def calc_index(index):
         ndwi = (green - nir) / (green + nir)
         return ndwi
 
+
+def get_blob_service_client():
+    account_name = os.getenv('AZURE_STORAGE_ACCOUNT')
+    account_url = f"https://{account_name}.blob.core.windows.net"
+    credential = DefaultAzureCredential()
+    return BlobServiceClient(account_url, credential)
+
+
+# Funkcja zapisu do Blob Storage
+def blob_save(raster_data, blob_name, index, cmap):
+    blob_service_client = get_blob_service_client()
+    container_client = blob_service_client.get_container_client("geotiff")
+
+    if not container_client.exists():
+        container_client.create_container()
+
+    bytes_io = io.BytesIO()
+    raster_data.rio.to_raster(bytes_io)
+    bytes_io.seek(0)
+
+    container_client.upload_blob(
+        name=blob_name,
+        data=bytes_io,
+        overwrite=True,
+        metadata={"index_type": index, "colormap": cmap}
+    )
+
+
+# Funkcja odczytu z Blob Storage
+def blob_read(blob_name):
+    blob_service_client = get_blob_service_client()
+    blob_client = blob_service_client.get_blob_client("geotiff", blob_name)
+
+    stream = io.BytesIO()
+    blob_client.download_blob().readinto(stream)
+    stream.seek(0)
+
+    return rioxarray.open_rasterio(stream)
+
 # STREAMLIT
 st.title("Wizualizacja wskaźników")
 
@@ -73,8 +116,16 @@ st.subheader(f"Wskaźnik: {index}")
 
 # https://learn.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?tabs=managed-identity%2Croles-azure-portal%2Csign-in-azure-cli&pivots=blob-storage-quickstart-scratch#upload-blobs-to-a-container
 # zapis danych
-raster = f"tmp{index}{cmap}.tif"
-index_data.rio.to_raster(raster)
+# raster = f"tmp{index}{cmap}.tif"
+# index_data.rio.to_raster(raster)
+
+blob_name = f"{index}_{cmap}.tif"
+blob_save(index_data, blob_name)
+st.success(f"Plik {blob_name} zapisany w Azure Blob Storage")
+
+# 2. Odczytaj do wizualizacji
+raster = blob_read(blob_name)
+
 # mapa
 m = leafmap.Map(center=[51.1, 16.95], zoom=11)
 m.add_raster(raster, layer_name=index, colormap=cmap)
