@@ -120,7 +120,7 @@ st.subheader(f"Wskaźnik: {index}")
 # index_data.rio.to_raster(raster)
 
 blob_name = f"{index}_{cmap}.tif"
-blob_save(index_data, blob_name)
+blob_save(index_data, blob_name, index, cmap)
 st.success(f"Plik {blob_name} zapisany w Azure Blob Storage")
 
 # 2. Odczytaj do wizualizacji
