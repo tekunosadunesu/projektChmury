@@ -1,0 +1,12 @@
+streamlit
+matplotlib
+pystac-client
+planetary-computer
+geopandas
+rioxarray
+leafmap
+azure-identity
+azure-storage-blob
+sqlalchemy
+pyproj
+shapely
