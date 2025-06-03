@@ -1,4 +1,3 @@
-import requests
 import streamlit as st
 import rioxarray
 from azure.storage.blob import BlobServiceClient
@@ -6,7 +5,6 @@ from azure.identity import DefaultAzureCredential
 import io
 import os
 import matplotlib.pyplot as plt
-import leafmap.foliumap as leafmap
 
 
 def get_blob_service_client():
@@ -25,25 +23,18 @@ def blob_read(blob_name):
     return rioxarray.open_rasterio(stream)
 
 
-
 st.title("Wizualizacja wskaźników spektralnych")
 
 index = st.selectbox("Wybierz wskaźnik", ["NDVI", "NDII", "NDBI", "NDWI"])
 cmap = st.selectbox("Wybierz mapę kolorów", ["RdYlGn", "coolwarm", "RdGy", "CMRmap"])
 
-# Wywołanie funkcji
+# Nazwa pliku wynikowego
 blob_name = f"{index}_{cmap}.tif"
-function_url = os.getenv("FUNCTION_URL")
 
+# Wersja bez wywołania Azure Function
+st.info("Wczytywanie danych z chmury Azure...")
 
-with st.spinner("Generowanie wskaźnika ..."):
-    response = requests.get(function_url, params={"index": index, "cmap": cmap})
-    if response.status_code == 200:
-        st.success(f"Wygenerowano i zapisano jako: {response.text}")
-    else:
-        st.error(f"Błąd funkcji: {response.text}")
-
-
+# Wczytanie i wizualizacja
 raster = blob_read(blob_name)
 
 fig, ax = plt.subplots(figsize=(8, 6))
