@@ -10,6 +10,7 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 from datetime import datetime
 import urllib.parse
+import psycopg2
 
 def get_connection_uri():
 
@@ -80,7 +81,20 @@ stats = {
 }
 
 st.subheader("Statystyki wskaźnika")
-st.write(stats)
+
+# Przygotowanie DataFrame do wyświetlenia
+df_display = pd.DataFrame([{
+    "Wskaźnik": stats["index"],
+    "Mapa kolorów": stats["colormap"],
+    "Min": round(stats["min"], 4),
+    "Max": round(stats["max"], 4),
+    "Średnia": round(stats["mean"], 4),
+    "Odchylenie std": round(stats["std"], 4),
+    "Czas zapisu": stats["timestamp"].strftime("%Y-%m-%d %H:%M:%S UTC")
+}])
+
+st.dataframe(df_display, use_container_width=True)
+
 
 # --- Zapis do bazy ---
 try:
