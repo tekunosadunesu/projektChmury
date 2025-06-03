@@ -1,8 +1,9 @@
 streamlit
 rioxarray
-matplotlib
 azure-storage-blob
 azure-identity
-sqlalchemy
-pandas
+matplotlib
 numpy
+pandas
+SQLAlchemy
+psycopg2-binary
