@@ -13,26 +13,13 @@ import urllib.parse
 import psycopg2
 
 def get_connection_uri():
-
-    # Read URI parameters from the environment
     dbhost = os.environ['DBHOST']
     dbname = os.environ['DBNAME']
-    dbuser = urllib.parse.quote(os.environ['DBUSER'])
+    dbuser = os.environ['DBUSER']
+    dbpassword = os.environ['DBPASSWORD']
     sslmode = os.environ['SSLMODE']
 
-
-    # Use passwordless authentication via DefaultAzureCredential.
-    # IMPORTANT! This code is for demonstration purposes only. DefaultAzureCredential() is invoked on every call.
-    # In practice, it's better to persist the credential across calls and reuse it so you can take advantage of token
-    # caching and minimize round trips to the identity provider. To learn more, see:
-    # https://github.com/Azure/azure-sdk-for-python/blob/main/sdk/identity/azure-identity/TOKEN_CACHING.md
-    credential = DefaultAzureCredential()
-
-    # Call get_token() to get a token from Microsft Entra ID and add it as the password in the URI.
-    # Note the requested scope parameter in the call to get_token, "https://ossrdbms-aad.database.windows.net/.default".
-    password = credential.get_token("https://ossrdbms-aad.database.windows.net/.default").token
-
-    db_uri = f"postgresql://{dbuser}:{password}@{dbhost}/{dbname}?sslmode={sslmode}"
+    db_uri = f"postgresql://{dbuser}:{dbpassword}@{dbhost}/{dbname}?sslmode={sslmode}"
     return db_uri
 
 def get_blob_service_client():
@@ -80,20 +67,17 @@ stats = {
     "timestamp": datetime.utcnow()
 }
 
-st.subheader("Statystyki wskaźnika")
-
-# Przygotowanie DataFrame do wyświetlenia
-df_display = pd.DataFrame([{
-    "Wskaźnik": stats["index"],
-    "Mapa kolorów": stats["colormap"],
-    "Min": round(stats["min"], 4),
-    "Max": round(stats["max"], 4),
-    "Średnia": round(stats["mean"], 4),
-    "Odchylenie std": round(stats["std"], 4),
-    "Czas zapisu": stats["timestamp"].strftime("%Y-%m-%d %H:%M:%S UTC")
-}])
-
-st.dataframe(df_display, use_container_width=True)
+with st.expander("📊 Statystyki wskaźnika"):
+    df_display = pd.DataFrame([{
+        "Wskaźnik": stats["index"],
+        "Mapa kolorów": stats["colormap"],
+        "Min": round(stats["min"], 4),
+        "Max": round(stats["max"], 4),
+        "Średnia": round(stats["mean"], 4),
+        "Odchylenie std": round(stats["std"], 4),
+        "Czas zapisu": stats["timestamp"].strftime("%Y-%m-%d %H:%M:%S UTC")
+    }])
+    st.dataframe(df_display, use_container_width=True)
 
 
 # --- Zapis do bazy ---
@@ -103,9 +87,9 @@ try:
 
     create_table_sql = """
     CREATE TABLE IF NOT EXISTS index_stats (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        [index] NVARCHAR(10),
-        colormap NVARCHAR(50),
+        id SERIAL PRIMARY KEY,
+        index VARCHAR(50),
+        colormap VARCHAR(50),
         min FLOAT,
         max FLOAT,
         mean FLOAT,
