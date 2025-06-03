@@ -1,8 +1,8 @@
-requests
 streamlit
 rioxarray
+matplotlib
 azure-storage-blob
 azure-identity
-matplotlib
-leafmap
-folium
+sqlalchemy
+pandas
+numpy
