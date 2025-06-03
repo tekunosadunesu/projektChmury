@@ -46,10 +46,6 @@ with st.spinner("Generowanie wskaźnika ..."):
 
 raster = blob_read(blob_name)
 
-m = leafmap.Map(center=[51.1, 16.95], zoom=11)
-m.add_raster(raster, layer_name=index, colormap=cmap)
-m.to_streamlit()
-
 fig, ax = plt.subplots(figsize=(8, 6))
 im = ax.imshow(raster.squeeze(), cmap=cmap)
 plt.colorbar(im, ax=ax, label=index)
