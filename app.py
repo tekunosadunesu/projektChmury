@@ -47,7 +47,47 @@ def blob_read(blob_name):
     return rioxarray.open_rasterio(stream)
 
 
+def stats_sidebar():
+    with st.sidebar.expander("Odczytane statystyki z bazy"):
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT index, colormap, min, max, mean, std, timestamp FROM index_stats ORDER BY timestamp DESC LIMIT 10;")
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+
+            if rows:
+                df_db = pd.DataFrame(rows,
+                                     columns=["Wskaźnik", "Mapa kolorów", "Min", "Max", "Średnia", "Odchylenie std",
+                                              "Czas zapisu"])
+                df_db["Czas zapisu"] = df_db["Czas zapisu"].dt.strftime("%Y-%m-%d %H:%M:%S UTC") if hasattr(
+                    df_db["Czas zapisu"], "dt") else df_db["Czas zapisu"]
+                st.dataframe(df_db, use_container_width=True)
+            else:
+                st.write("Brak danych w bazie.")
+        except Exception as e:
+            st.error(f"Błąd odczytu z bazy: {e}")
+
+
+def stats_expander():
+    with st.expander("Statystyki wskaźnika"):
+        df_display = pd.DataFrame([{
+            "Wskaźnik": stats["index"],
+            "Mapa kolorów": stats["colormap"],
+            "Min": round(stats["min"], 4),
+            "Max": round(stats["max"], 4),
+            "Średnia": round(stats["mean"], 4),
+            "Odchylenie std": round(stats["std"], 4),
+            "Czas zapisu": stats["timestamp"].strftime("%Y-%m-%d %H:%M:%S UTC")
+        }])
+        st.dataframe(df_display, use_container_width=True)
+
+
 st.title("Wizualizacja wskaźników spektralnych")
+
+stats_sidebar()
 
 index = st.selectbox("Wybierz wskaźnik", ["NDVI", "NDII", "NDBI", "NDWI"])
 cmap = st.selectbox("Wybierz mapę kolorów", ["RdYlGn", "coolwarm", "RdGy", "CMRmap"])
@@ -55,14 +95,14 @@ cmap = st.selectbox("Wybierz mapę kolorów", ["RdYlGn", "coolwarm", "RdGy", "CM
 blob_name = f"{index}_{cmap}.tif"
 raster = blob_read(blob_name).squeeze()
 
-# Wyświetlenie rastra
+# wyswietlanie
 fig, ax = plt.subplots(figsize=(8, 6))
 im = ax.imshow(raster, cmap=cmap)
 plt.colorbar(im, ax=ax, label=index)
 ax.axis("off")
 st.pyplot(fig)
 
-# --- Obliczanie statystyk ---
+# obliczanie statystyk
 array = raster.values
 array = np.where(np.isnan(array), np.nan, array)
 
@@ -76,20 +116,9 @@ stats = {
     "timestamp": datetime.utcnow()
 }
 
-with st.expander("📊 Statystyki wskaźnika"):
-    df_display = pd.DataFrame([{
-        "Wskaźnik": stats["index"],
-        "Mapa kolorów": stats["colormap"],
-        "Min": round(stats["min"], 4),
-        "Max": round(stats["max"], 4),
-        "Średnia": round(stats["mean"], 4),
-        "Odchylenie std": round(stats["std"], 4),
-        "Czas zapisu": stats["timestamp"].strftime("%Y-%m-%d %H:%M:%S UTC")
-    }])
-    st.dataframe(df_display, use_container_width=True)
+stats_expander()
 
-
-# --- Zapis do bazy ---
+# zapis do bazyu
 try:
     conn = get_connection()
     cursor = conn.cursor()
