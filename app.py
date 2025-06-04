@@ -71,10 +71,12 @@ def stats_sidebar():
 
 def stats_dist_sidebar(array, index_name):
     with st.sidebar.expander("Statystyki rozkładu wskaźnika"):
-        show_hist = st.checkbox("Pokaż histogram z rozkładem normalnym")
-        show_min_max_mean = st.checkbox("Pokaż wykres Min, Max, Średnia, Ochylenie std")
+        show_hist = st.checkbox("Pokaż histogram", value=True)
+        show_norm = st.checkbox("Pokaż rozkład normalny")
+        show_stats = st.checkbox("Pokaż linie Min, Max, Średnia")
+        show_std = st.checkbox("Pokaż odchylenie standardowe (±1σ wokół średniej)")
 
-        if st.button("Pokaż wybrane statystyki"):
+        if st.button("Pokaż wybrane wizualizacje"):
             clean_array = array[np.isfinite(array)]
 
             if len(clean_array) == 0:
@@ -86,40 +88,32 @@ def stats_dist_sidebar(array, index_name):
             min_val = np.min(clean_array)
             max_val = np.max(clean_array)
 
+            fig, ax = plt.subplots(figsize=(8, 5))
+
             if show_hist:
-                st.write(f"**Histogram i rozkład normalny dla {index_name}**")
-                fig, ax = plt.subplots(figsize=(6,4))
-                count, bins, ignored = ax.hist(clean_array, bins=50, density=True, alpha=0.6, color='g', label="Histogram")
+                ax.hist(clean_array, bins=50, density=True, alpha=0.6, color='g', label="Histogram")
 
-                xmin, xmax = bins[0], bins[-1]
-                x = np.linspace(xmin, xmax, 100)
+            if show_norm:
+                x = np.linspace(min_val, max_val, 100)
+                def norm_dist(x, mean, std):
+                    return 1 / (std * np.sqrt(2 * np.pi)) * np.exp(-((x - mean) ** 2) / (2 * std ** 2))
+                ax.plot(x, norm_dist(x, mean_val, std_val), 'k-', linewidth=2, label="Rozkład normalny")
 
-                def standard_dev(x, mean, std):
-                    first = 1 / (std * np.sqrt(2 * np.pi))
-                    second = np.exp(- ((x - mean) ** 2) / (2 * std ** 2))
-                    return first * second
+            if show_stats:
+                ax.axvline(min_val, color='blue', linestyle='--', label="Min")
+                ax.axvline(mean_val, color='orange', linestyle='--', label="Średnia")
+                ax.axvline(max_val, color='green', linestyle='--', label="Max")
 
-                p = standard_dev(x, mean_val, std_val)
-                ax.plot(x, p, 'k', linewidth=2, label='Rozkład normalny')
+            if show_std:
+                ax.axvline(mean_val - std_val, color='red', linestyle=':', label="Średnia - 1σ")
+                ax.axvline(mean_val + std_val, color='red', linestyle=':', label="Średnia + 1σ")
 
-                ax.set_title(f"Histogram i rozkład normalny: {index_name}")
-                ax.legend()
-                st.pyplot(fig)
+            ax.set_title(f"Rozkład wartości wskaźnika: {index_name}")
+            ax.legend()
+            st.pyplot(fig)
 
-            if show_min_max_mean:
-                st.write(f"Wartości Min, Max, Średnia z odchyleniem standardowym dla {index_name}")
-                fig, ax = plt.subplots(figsize=(6, 3))
-
-                bars = ax.bar(['Min', 'Średnia', 'Max'], [min_val, mean_val, max_val], color=['blue', 'orange', 'green'])
-
-                ax.errorbar(1, mean_val, yerr=std_val, fmt='none', ecolor='red', capsize=5, label='Odchylenie standardowe')
-
-                ax.set_title(f"Min, Średnia, Max i Odchylenie standardowe: {index_name}")
-                ax.legend()
-                st.pyplot(fig)
-
-            if not show_hist and not show_min_max_mean:
-                st.write("Zaznacz co chcesz zobaczyć i kliknij przycisk.")
+        elif not any([show_hist, show_norm, show_stats, show_std]):
+            st.write("Zaznacz co chcesz zobaczyć i kliknij przycisk.")
 
 def stats_expander():
     with st.expander("Statystyki wskaźnika"):
