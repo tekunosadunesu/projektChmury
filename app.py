@@ -18,9 +18,10 @@ def get_connection():
     dbname = os.environ['DBNAME']
     dbuser = os.environ['DBUSER']
     sslmode = os.environ['SSLMODE']
+    password = os.environ['DBPASSWORD']
 
-    credential = DefaultAzureCredential()
-    password = credential.get_token("https://ossrdbms-aad.database.windows.net/.default").token
+    # credential = DefaultAzureCredential()
+    # password = credential.get_token("https://ossrdbms-aad.database.windows.net/.default").token
 
     conn = psycopg2.connect(
         host=dbhost,
