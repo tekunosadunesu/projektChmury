@@ -168,6 +168,10 @@ stats = {
 
 stats_expander()
 
+array = raster.values
+array = np.where(np.isnan(array), np.nan, array)
+stats_dist_sidebar(array, index)
+
 # zapis do bazyu
 if st.button("Zapisz statystyki do bazy"):
     try:
