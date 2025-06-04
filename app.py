@@ -12,28 +12,24 @@ from datetime import datetime
 import urllib.parse
 import psycopg2
 
-def get_connection_uri():
+def get_connection():
 
-    # Read URI parameters from the environment
     dbhost = os.environ['DBHOST']
     dbname = os.environ['DBNAME']
-    dbuser = urllib.parse.quote(os.environ['DBUSER'])
+    dbuser = os.environ['DBUSER']
     sslmode = os.environ['SSLMODE']
 
-
-    # Use passwordless authentication via DefaultAzureCredential.
-    # IMPORTANT! This code is for demonstration purposes only. DefaultAzureCredential() is invoked on every call.
-    # In practice, it's better to persist the credential across calls and reuse it so you can take advantage of token
-    # caching and minimize round trips to the identity provider. To learn more, see:
-    # https://github.com/Azure/azure-sdk-for-python/blob/main/sdk/identity/azure-identity/TOKEN_CACHING.md
     credential = DefaultAzureCredential()
-
-    # Call get_token() to get a token from Microsft Entra ID and add it as the password in the URI.
-    # Note the requested scope parameter in the call to get_token, "https://ossrdbms-aad.database.windows.net/.default".
     password = credential.get_token("https://ossrdbms-aad.database.windows.net/.default").token
 
-    db_uri = f"postgresql://{dbuser}:{password}@{dbhost}/{dbname}?sslmode={sslmode}"
-    return db_uri
+    conn = psycopg2.connect(
+        host=dbhost,
+        dbname=dbname,
+        user=dbuser,
+        password=password,
+        sslmode=sslmode
+    )
+    return conn
 
 def get_blob_service_client():
     account_name = os.getenv("AZURE_STORAGE_ACCOUNT")
@@ -95,8 +91,8 @@ with st.expander("📊 Statystyki wskaźnika"):
 
 # --- Zapis do bazy ---
 try:
-    conn_str = get_connection_uri()
-    engine = create_engine(conn_str)
+    conn = get_connection()
+    cursor = conn.cursor()
 
     create_table_sql = """
     CREATE TABLE IF NOT EXISTS index_stats (
@@ -107,15 +103,29 @@ try:
         max FLOAT,
         mean FLOAT,
         std FLOAT,
-        timestamp DATETIME
+        timestamp TIMESTAMP
     );
     """
+    cursor.execute(create_table_sql)
+    conn.commit()
 
-    with engine.begin() as conn:
-        conn.execute(text(create_table_sql))
+    insert_sql = """
+    INSERT INTO index_stats (index, colormap, min, max, mean, std, timestamp)
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """
+    cursor.execute(insert_sql, (
+        stats["index"],
+        stats["colormap"],
+        stats["min"],
+        stats["max"],
+        stats["mean"],
+        stats["std"],
+        stats["timestamp"]
+    ))
+    conn.commit()
 
-    df_stats = pd.DataFrame([stats])
-    df_stats.to_sql("index_stats", engine, if_exists="append", index=False)
+    cursor.close()
+    conn.close()
 
     st.success("Zapisano statystyki do bazy danych.")
 except Exception as e:
