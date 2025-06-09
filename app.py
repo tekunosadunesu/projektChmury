@@ -73,8 +73,8 @@ def stats_dist_sidebar(array, index_name):
     with st.sidebar.expander("Statystyki rozkładu wskaźnika"):
         show_hist = st.checkbox("Pokaż histogram", value=True)
         show_norm = st.checkbox("Pokaż rozkład normalny")
-        show_stats = st.checkbox("Pokaż linie Min, Max, Średnia")
-        show_std = st.checkbox("Pokaż odchylenie standardowe (±1σ wokół średniej)")
+        show_stats = st.checkbox("Pokaż Min, Max, Średnia")
+        show_std = st.checkbox("Pokaż odchylenie standardowe")
 
         if st.button("Pokaż wybrane wizualizacje"):
             clean_array = array[np.isfinite(array)]
@@ -105,8 +105,7 @@ def stats_dist_sidebar(array, index_name):
                 ax.axvline(max_val, color='green', linestyle='--', label="Max")
 
             if show_std:
-                ax.axvline(mean_val - std_val, color='red', linestyle=':', label="Średnia - 1σ")
-                ax.axvline(mean_val + std_val, color='red', linestyle=':', label="Średnia + 1σ")
+                ax.axvline(mean_val - std_val, color='red', linestyle=':', label="Odchylenie std")
 
             ax.set_title(f"Rozkład wartości wskaźnika: {index_name}")
             ax.legend()
